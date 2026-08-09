@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "action_id": "walk_left_loop",
+  "display_name": "向左行走循环",
+  "status": "planned",
+  "runtime_enabled": false,
+  "assets_complete": false,
+  "category": "FRAME_SEQUENCE",
+  "loop_mode": "LOOP",
+  "interrupt_policy": "FINISH_FRAME",
+  "priority": 500,
+  "default_loop_count": 1,
+  "mirror_allowed": false,
+  "source_asset_sha256": "6FD2E4CA948E250926A22428AA633AF83F487971086ABA92B1017C3599747A64",
+  "canvas": {"width": 1024, "height": 1536},
+  "feet_anchor": {"x": 0.5, "y": 0.9733},
+  "tags": ["walk", "left", "autonomous"],
+  "frames": [],
+  "planning": {
+    "frame_count_min": 8,
+    "frame_count_max": 12,
+    "fps_min": 8,
+    "fps_max": 12,
+    "notes": ["完整人物逐帧素材", "左方向单独设计", "拖拽全局立即打断"]
+  }
+}

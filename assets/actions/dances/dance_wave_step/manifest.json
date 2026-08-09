@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "action_id": "dance_wave_step",
+  "display_name": "挥手踏步",
+  "status": "planned",
+  "runtime_enabled": false,
+  "assets_complete": false,
+  "category": "USER_SELECTED",
+  "loop_mode": "LOOP",
+  "interrupt_policy": "FINISH_CYCLE",
+  "priority": 800,
+  "default_loop_count": 3,
+  "mirror_allowed": false,
+  "source_asset_sha256": "6FD2E4CA948E250926A22428AA633AF83F487971086ABA92B1017C3599747A64",
+  "canvas": {"width": 1024, "height": 1536},
+  "feet_anchor": {"x": 0.5, "y": 0.9733},
+  "tags": ["dance", "user_selected", "wave_step"],
+  "frames": [],
+  "planning": {
+    "frame_count_min": 16,
+    "frame_count_max": 24,
+    "fps_min": 8,
+    "fps_max": 12,
+    "notes": ["首选低风险舞蹈", "原创挥手和左右踏步组合", "普通自动行为不可打断"]
+  }
+}

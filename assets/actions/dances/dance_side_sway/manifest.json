@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "action_id": "dance_side_sway",
+  "display_name": "节拍侧摆",
+  "status": "planned",
+  "runtime_enabled": false,
+  "assets_complete": false,
+  "category": "USER_SELECTED",
+  "loop_mode": "LOOP",
+  "interrupt_policy": "FINISH_CYCLE",
+  "priority": 800,
+  "default_loop_count": 3,
+  "mirror_allowed": false,
+  "source_asset_sha256": "6FD2E4CA948E250926A22428AA633AF83F487971086ABA92B1017C3599747A64",
+  "canvas": {"width": 1024, "height": 1536},
+  "feet_anchor": {"x": 0.5, "y": 0.9733},
+  "tags": ["dance", "user_selected", "side_sway"],
+  "frames": [],
+  "planning": {
+    "frame_count_min": 20,
+    "frame_count_max": 32,
+    "fps_min": 8,
+    "fps_max": 12,
+    "notes": ["中等难度重心侧摆", "手臂小范围节拍动作", "头发与裙摆需保持一致"]
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://desktop-pet.local/schema/action_clip.schema.json",
+  "title": "Desktop Pet action manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "action_id",
+    "display_name",
+    "status",
+    "runtime_enabled",
+    "assets_complete",
+    "category",
+    "loop_mode",
+    "interrupt_policy",
+    "priority",
+    "default_loop_count",
+    "mirror_allowed",
+    "source_asset_sha256",
+    "canvas",
+    "feet_anchor",
+    "tags",
+    "frames",
+    "planning"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "action_id": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"},
+    "display_name": {"type": "string", "minLength": 1},
+    "status": {"enum": ["planned", "draft", "ready", "disabled"]},
+    "runtime_enabled": {"type": "boolean"},
+    "assets_complete": {"type": "boolean"},
+    "category": {
+      "enum": ["OVERLAY", "FRAME_SEQUENCE", "TRANSFORM", "WINDOW_MOVEMENT", "REMINDER", "USER_SELECTED"]
+    },
+    "loop_mode": {"enum": ["ONCE", "LOOP", "PING_PONG", "HOLD_LAST_FRAME"]},
+    "interrupt_policy": {"enum": ["IMMEDIATE", "FINISH_FRAME", "FINISH_CYCLE", "NOT_INTERRUPTIBLE"]},
+    "priority": {"enum": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100]},
+    "default_loop_count": {"type": "integer", "minimum": 1},
+    "mirror_allowed": {"const": false},
+    "source_asset_sha256": {
+      "const": "6FD2E4CA948E250926A22428AA633AF83F487971086ABA92B1017C3599747A64"
+    },
+    "canvas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {"width": {"const": 1024}, "height": {"const": 1536}}
+    },
+    "feet_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": {"type": "number", "minimum": 0, "maximum": 1},
+        "y": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"}
+    },
+    "frames": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["asset_path", "duration_ms", "anchor_x", "anchor_y"],
+        "properties": {
+          "asset_path": {"type": "string", "pattern": "^frames/[a-z0-9_/-]+\\.png$"},
+          "duration_ms": {"type": "integer", "minimum": 1},
+          "anchor_x": {"type": "number", "minimum": 0, "maximum": 1},
+          "anchor_y": {"type": "number", "minimum": 0, "maximum": 1},
+          "event": {
+            "type": ["string", "null"],
+            "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+          }
+        }
+      }
+    },
+    "planning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frame_count_min", "frame_count_max", "fps_min", "fps_max", "notes"],
+      "properties": {
+        "frame_count_min": {"type": "integer", "minimum": 1},
+        "frame_count_max": {"type": "integer", "minimum": 1},
+        "fps_min": {"type": "integer", "minimum": 1},
+        "fps_max": {"type": "integer", "minimum": 1},
+        "notes": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "planned"}}},
+      "then": {
+        "properties": {
+          "runtime_enabled": {"const": false},
+          "assets_complete": {"const": false},
+          "frames": {"maxItems": 0}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"enum": ["draft", "disabled"]}}},
+      "then": {"properties": {"runtime_enabled": {"const": false}}}
+    },
+    {
+      "if": {"properties": {"status": {"const": "ready"}}},
+      "then": {
+        "properties": {
+          "runtime_enabled": {"const": true},
+          "assets_complete": {"const": true},
+          "frames": {"minItems": 1}
+        }
+      }
+    }
+  ]
+}

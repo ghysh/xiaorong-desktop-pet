@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "action_id": "sit_down_cross_legged",
+  "display_name": "盘腿坐下",
+  "status": "planned",
+  "runtime_enabled": false,
+  "assets_complete": false,
+  "category": "FRAME_SEQUENCE",
+  "loop_mode": "HOLD_LAST_FRAME",
+  "interrupt_policy": "FINISH_CYCLE",
+  "priority": 600,
+  "default_loop_count": 1,
+  "mirror_allowed": false,
+  "source_asset_sha256": "6FD2E4CA948E250926A22428AA633AF83F487971086ABA92B1017C3599747A64",
+  "canvas": {"width": 1024, "height": 1536},
+  "feet_anchor": {"x": 0.5, "y": 0.9733},
+  "tags": ["sleep", "transition", "sit"],
+  "frames": [],
+  "planning": {
+    "frame_count_min": 6,
+    "frame_count_max": 10,
+    "fps_min": 8,
+    "fps_max": 12,
+    "notes": ["站立到盘腿坐姿", "必须绘制真实腿部交叠", "不可压扁站立图代替"]
+  }
+}

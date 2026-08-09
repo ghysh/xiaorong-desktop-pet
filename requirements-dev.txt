@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest
+ruff
+pyinstaller
+numpy
+opencv-python-headless

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "action_id": "wake_up_cross_legged",
+  "display_name": "盘腿醒来并起身",
+  "status": "planned",
+  "runtime_enabled": false,
+  "assets_complete": false,
+  "category": "FRAME_SEQUENCE",
+  "loop_mode": "ONCE",
+  "interrupt_policy": "FINISH_CYCLE",
+  "priority": 600,
+  "default_loop_count": 1,
+  "mirror_allowed": false,
+  "source_asset_sha256": "6FD2E4CA948E250926A22428AA633AF83F487971086ABA92B1017C3599747A64",
+  "canvas": {"width": 1024, "height": 1536},
+  "feet_anchor": {"x": 0.5, "y": 0.9733},
+  "tags": ["sleep", "transition", "wake"],
+  "frames": [],
+  "planning": {
+    "frame_count_min": 6,
+    "frame_count_max": 10,
+    "fps_min": 8,
+    "fps_max": 12,
+    "notes": ["盘腿坐姿到站立", "用户舞蹈前必须先起身", "退出和拖拽保留全局打断权"]
+  }
+}

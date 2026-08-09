@@ -1,0 +1,79 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Runtime user data
+settings.ini
+*.log
+logs/
+crash_logs/
+
+# Build and release binaries
+build/
+dist/
+release/
+release_archive_*/
+*.exe
+*.msi
+
+# PyInstaller caches
+*.toc
+*.pyz
+*.pkg
+*.spec.bak
+
+# Generated, source, candidate, diagnostic, and preview images
+assets/analysis/
+assets/original/
+assets/processed/
+assets/fullbody/concepts/
+assets/fullbody/diagnostics/
+assets/fullbody/intermediate/
+assets/fullbody/previews/
+assets/fullbody/reports/
+assets/fullbody/selected/
+**/diagnostics/
+**/preview/
+**/previews/
+assets/icons/desktop_pet.ico
+assets/icons/desktop_pet_icon_preview.png
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+credentials*
+token*
+secrets*
+cookies*

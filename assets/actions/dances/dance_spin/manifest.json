@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "action_id": "dance_spin",
+  "display_name": "裙摆旋转",
+  "status": "planned",
+  "runtime_enabled": false,
+  "assets_complete": false,
+  "category": "USER_SELECTED",
+  "loop_mode": "ONCE",
+  "interrupt_policy": "FINISH_CYCLE",
+  "priority": 800,
+  "default_loop_count": 2,
+  "mirror_allowed": false,
+  "source_asset_sha256": "6FD2E4CA948E250926A22428AA633AF83F487971086ABA92B1017C3599747A64",
+  "canvas": {"width": 1024, "height": 1536},
+  "feet_anchor": {"x": 0.5, "y": 0.9733},
+  "tags": ["dance", "user_selected", "spin"],
+  "frames": [],
+  "planning": {
+    "frame_count_min": 24,
+    "frame_count_max": 48,
+    "fps_min": 8,
+    "fps_max": 12,
+    "notes": ["高风险侧背面设计", "不对称长发和红色饰物必须连续", "不作为首支舞实现"]
+  }
+}

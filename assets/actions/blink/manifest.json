@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "action_id": "blink_normal",
+  "display_name": "自然眨眼",
+  "status": "ready",
+  "runtime_enabled": true,
+  "assets_complete": true,
+  "category": "OVERLAY",
+  "loop_mode": "ONCE",
+  "interrupt_policy": "IMMEDIATE",
+  "priority": 200,
+  "default_loop_count": 1,
+  "mirror_allowed": false,
+  "source_asset_sha256": "6FD2E4CA948E250926A22428AA633AF83F487971086ABA92B1017C3599747A64",
+  "canvas": {"width": 1024, "height": 1536},
+  "feet_anchor": {"x": 0.5, "y": 0.9733},
+  "tags": ["blink", "face", "overlay"],
+  "frames": [
+    {
+      "asset_path": "frames/blink_open.png",
+      "duration_ms": 35,
+      "anchor_x": 0.5,
+      "anchor_y": 0.9733,
+      "event": "blink_opening"
+    },
+    {
+      "asset_path": "frames/blink_half_closed.png",
+      "duration_ms": 35,
+      "anchor_x": 0.5,
+      "anchor_y": 0.9733,
+      "event": "blink_closing"
+    },
+    {
+      "asset_path": "frames/blink_closed.png",
+      "duration_ms": 55,
+      "anchor_x": 0.5,
+      "anchor_y": 0.9733,
+      "event": "blink_closed"
+    },
+    {
+      "asset_path": "frames/blink_half_open.png",
+      "duration_ms": 35,
+      "anchor_x": 0.5,
+      "anchor_y": 0.9733,
+      "event": "blink_reopening"
+    },
+    {
+      "asset_path": "frames/blink_open.png",
+      "duration_ms": 35,
+      "anchor_x": 0.5,
+      "anchor_y": 0.9733,
+      "event": "blink_restored"
+    }
+  ],
+  "planning": {
+    "frame_count_min": 5,
+    "frame_count_max": 10,
+    "fps_min": 20,
+    "fps_max": 40,
+    "notes": ["局部双眼覆盖层", "闭眼造型等待用户真实桌面确认", "普通眨眼总时长 195 毫秒"]
+  }
+}

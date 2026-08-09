@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "desktop-pet"
+dynamic = ["version"]
+description = "基于用户原始形象图片开发的 Windows 桌宠项目"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+authors = [{ name = "DesktopPet Project" }]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "desktop_pet.version.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --basetemp=build/pytest-temp"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.desktop_pet]
+text_encoding = "utf-8"
