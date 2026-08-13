@@ -13,20 +13,21 @@
 ## Advanced interaction extension
 
 - **Stage 10A — Advanced interaction architecture and action asset specification:** complete.
-- **Stage 10B-0 — Effective-click random dialogue bubble:** complete and included in 1.1.0.
-- **Stage 10B — Generic action clip player and blinking:** complete; only `blink_normal` is runtime-enabled in 1.1.0.
+- **Stage 10B-0 — Effective-click random dialogue bubble:** complete and included in 1.2.0.
+- **Stage 10B — Generic action clip player and blinking:** complete; `blink_normal` remains runtime-enabled.
+- **Autonomous drowsy sleep action:** complete; `drowsy_sleep_cycle` adds cross-legged sleep, an independent nasal-bubble layer, gentle nods, and the wake/stretch/yawn/eye-rub return flow.
 - **Stage 10C — Independent left/right walking, turning, and autonomous desktop motion:** pending.
 - **Stage 10D — Cross-legged sitting, sleep loop, and wake-up:** pending.
 - **Stage 10E — Water and break reminder system:** pending.
 - **Stage 10F — User-selectable dance action library:** pending.
 - **Stage 10G — Advanced interaction integration, long-run testing, and optimization:** pending for the future advanced-action scope.
 
-## Version 1.1.0 release
+## Version 1.2.0 release
 
-Current functionality is frozen for a minimized Windows x64 release under the user-visible name **小融**. The release process validates an internal PyInstaller onedir build before producing the primary onefile executable, and packages only resources proven to be read by the current runtime. Historical release artifacts and scripts remain preserved outside the new three-file user release directory.
+Current functionality is frozen for a minimized Windows x64 release under the user-visible name **小融**. The release process validates an internal PyInstaller onedir build before producing the onefile executable, and packages only resources proven to be read by the current runtime. The public `release/` directory contains only `小融-1.2.0-win64.exe`.
 
 ## Guardrails
 
 The Plan B master, facial identity, asymmetric hair, red accessories, outfit, proportions, and feet anchor remain protected. Left and right actions are independently designed by default; automatic mirroring is prohibited. Planned manifests are disabled, contain no frame references, and are not imported by the current runtime.
 
-The 1.1.0 release does not activate Stage 10C+ planning files. Walking, turning, autonomous motion, sleep, reminders, and dances must not begin automatically.
+The 1.2.0 release enables only `blink_normal` and `drowsy_sleep_cycle`. Walking, turning, autonomous desktop motion, reminders, and dances remain disabled planning assets.

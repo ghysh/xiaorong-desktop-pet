@@ -37,6 +37,7 @@ from desktop_pet.version import __version__
 
 ORGANIZATION_NAME = "DesktopPetProject"
 APPLICATION_NAME = "小融"
+DROWSY_SLEEP_RUNTIME_ID = "drowsy_sleep_cycle"
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,6 +172,8 @@ class DesktopPetApplicationController(QObject):
             show_hide_callback=self.toggle_window_visibility,
             show_settings_callback=self.show_settings,
             reset_position_callback=self.reset_position,
+            drowsy_sleep_enabled_callback=self.set_drowsy_sleep_enabled,
+            drowsy_sleep_demo_callback=self.animation_controller.play_drowsy_sleep_demo,
             quit_callback=self.request_quit,
             parent=self,
         )
@@ -191,6 +194,7 @@ class DesktopPetApplicationController(QObject):
         self.application.aboutToQuit.connect(self.shutdown)
 
         self.pet_window.set_behavior_enabled(initial.behavior_enabled)
+        self.pet_window.set_drowsy_sleep_enabled(initial.drowsy_sleep_enabled)
         self.pet_window.set_click_reaction_enabled(initial.click_reaction_enabled)
         self.pet_window.set_animation_enabled(initial.animation_enabled)
         self._restore_startup_position(initial)
@@ -234,6 +238,13 @@ class DesktopPetApplicationController(QObject):
         self.pet_window.move(default_pet_position(self.pet_window))
         self._save_position(self.pet_window.pos())
 
+    def set_drowsy_sleep_enabled(self, enabled: bool) -> None:
+        """Persist an explicit menu command, including repeated Off during a demo."""
+        was_enabled = self.settings_service.current.drowsy_sleep_enabled
+        self.settings_service.set_drowsy_sleep_enabled(enabled)
+        if enabled is was_enabled:
+            self.pet_window.set_drowsy_sleep_enabled(enabled)
+
     def request_quit(self) -> None:
         self.shutdown()
         self.application.quit()
@@ -267,6 +278,8 @@ class DesktopPetApplicationController(QObject):
             "runtime_asset_sha256": runtime_asset_sha256(FULLBODY_RUNTIME_MASTER),
             "window_size": list(self.pet_window.size().toTuple()),
             "translucent_background": self.pet_window.testAttribute(Qt.WidgetAttribute.WA_TranslucentBackground),
+            "always_on_top": bool(self.pet_window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint),
+            "alpha_hit_region_nonempty": not self.pet_window.alpha_bounds_window.isEmpty(),
             "window_count": sum(isinstance(widget, PetWindow) for widget in QApplication.topLevelWidgets()),
             "high_frequency_timer_count": len(self.pet_window.findChildren(QTimer)),
             "dialogue_single_shot_timer_count": len(self.dialogue_bubble.findChildren(QTimer)),
@@ -308,6 +321,8 @@ class DesktopPetApplicationController(QObject):
                 self.dialogue_controller.set_always_on_top(settings.always_on_top)
             if settings.behavior_enabled is not previous.behavior_enabled:
                 self.pet_window.set_behavior_enabled(settings.behavior_enabled)
+            if settings.drowsy_sleep_enabled is not previous.drowsy_sleep_enabled:
+                self.pet_window.set_drowsy_sleep_enabled(settings.drowsy_sleep_enabled)
             if settings.click_reaction_enabled is not previous.click_reaction_enabled:
                 self.pet_window.set_click_reaction_enabled(settings.click_reaction_enabled)
                 self.dialogue_controller.set_enabled(settings.click_reaction_enabled)
@@ -360,6 +375,97 @@ def _write_smoke_result(path: Path, snapshot: dict[str, object]) -> None:
     path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def _exercise_release_features(
+    controller: DesktopPetApplicationController,
+    application: QApplication,
+) -> dict[str, object]:
+    """Exercise packaged dialogue, menus, settings, and sleep assets before exit."""
+    dialogue_displayed = controller.dialogue_controller.show_random_dialogue()
+    application.processEvents()
+    dialogue_visible = controller.dialogue_bubble.isVisible()
+    dialogue_text_nonempty = bool(controller.dialogue_bubble.current_text.strip())
+    controller.dialogue_controller.hide()
+
+    menu = controller.pet_window.create_context_menu()
+    autonomous_action = next(action for action in menu.actions() if action.text() == "自主动作")
+    autonomous_menu = autonomous_action.menu()
+    if autonomous_menu is None:
+        raise RuntimeError("自主动作菜单缺失。")
+    sleep_action = next(action for action in autonomous_menu.actions() if action.text() == "打瞌睡")
+    sleep_menu = sleep_action.menu()
+    if sleep_menu is None:
+        raise RuntimeError("打瞌睡菜单缺失。")
+    sleep_menu_actions = [
+        action.text()
+        for action in sleep_menu.actions()
+        if not action.isSeparator()
+    ]
+
+    controller.action_registry.drowsy_sleep_off_action.trigger()
+    disabled_persisted = not controller.settings_repository.load().drowsy_sleep_enabled
+    controller.action_registry.drowsy_sleep_on_action.trigger()
+    enabled_persisted = controller.settings_repository.load().drowsy_sleep_enabled
+    controller.action_registry.drowsy_sleep_demo_action.trigger()
+
+    animation = controller.animation_controller
+    animation.timer.stop()
+    player = animation.action_player
+    clip = player.current_clip
+    demo_started = clip is not None and clip.action_id == DROWSY_SLEEP_RUNTIME_ID
+    if not demo_started or clip is None:
+        raise RuntimeError("打瞌睡演示未能在发布烟雾测试中启动。")
+
+    unique_assets = {frame.asset_path for frame in clip.frames}
+    all_frames_cached = all(
+        controller.pet_window.action_asset_cache.source_record(
+            DROWSY_SLEEP_RUNTIME_ID,
+            asset_path,
+        ).source_image.isNull()
+        is False
+        for asset_path in unique_assets
+    )
+    elapsed_ms = 0
+    bubble_probe_ms: int | None = None
+    for frame in clip.frames:
+        if frame.event == "sleep_bubble":
+            bubble_probe_ms = elapsed_ms + 1
+            break
+        elapsed_ms += frame.duration_ms
+    if bubble_probe_ms is None:
+        raise RuntimeError("打瞌睡动作缺少鼻涕泡显示事件。")
+    probe_time = player.last_elapsed_seconds + bubble_probe_ms / 1000.0
+    player.update(probe_time)
+    current_frame = player.current_frame
+    if current_frame is None:
+        raise RuntimeError("打瞌睡动作未加载探测帧。")
+    animation._set_sleep_bubble(
+        animation.sleep_controller.bubble_state(probe_time, current_frame.event),
+        force=True,
+    )
+    application.processEvents()
+    sleep_bubble_visible = animation.sleep_bubble_state.visible
+    overlay_frame_loaded = controller.pet_window.current_overlay_frame is not None
+    player.interrupt(probe_time, reason="release_smoke_complete")
+    sleep_bubble_cleared = not animation.sleep_bubble_state.visible
+    menu.deleteLater()
+
+    return {
+        "click_dialogue_displayed": dialogue_displayed,
+        "dialogue_bubble_visible": dialogue_visible,
+        "dialogue_text_nonempty": dialogue_text_nonempty,
+        "drowsy_menu_actions": sleep_menu_actions,
+        "drowsy_disabled_persisted": disabled_persisted,
+        "drowsy_enabled_persisted": enabled_persisted,
+        "drowsy_demo_started": demo_started,
+        "drowsy_frame_count": len(clip.frames),
+        "drowsy_unique_asset_count": len(unique_assets),
+        "all_drowsy_frames_cached": all_frames_cached,
+        "drowsy_overlay_frame_loaded": overlay_frame_loaded,
+        "sleep_bubble_visible": sleep_bubble_visible,
+        "sleep_bubble_cleared": sleep_bubble_cleared,
+    }
+
+
 def run(argv: list[str] | None = None) -> int:
     """Run normally or execute the explicit frozen-release smoke mode."""
     options = parse_runtime_options([] if argv is None else argv)
@@ -375,6 +481,7 @@ def run(argv: list[str] | None = None) -> int:
         if options.release_smoke_test:
             def finish_smoke_test() -> None:
                 assert options.smoke_result is not None
+                feature_checks = _exercise_release_features(controller, application)
                 size_switch_results: list[list[int]] = []
                 for size in PetSize:
                     controller.settings_service.set_size(size)
@@ -386,6 +493,7 @@ def run(argv: list[str] | None = None) -> int:
                 controller.pet_window.move(saved_position)
                 controller._save_position(saved_position)
                 snapshot = controller.smoke_snapshot()
+                snapshot.update(feature_checks)
                 snapshot["size_switch_results"] = size_switch_results
                 snapshot["position_saved"] = (
                     controller.settings_service.current.window_x == saved_position.x()

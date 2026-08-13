@@ -13,6 +13,7 @@
 - 行为状态机与拖拽优先级
 - 点击挤压反馈和随机对白气泡
 - `blink_normal` 自然眨眼
+- `drowsy_sleep_cycle` 犯困、盘腿睡眠、独立鼻涕泡与连续苏醒动作
 - 右键菜单、系统托盘、设置和位置持久化
 
 ## 核心入口
@@ -51,7 +52,7 @@ SHA-256：
 
 ## 动画架构
 
-`AnimationController` 持有唯一的高频 30 FPS `QTimer`。`ActionPlayer` 使用同一时间源推进动作，不应创建第二个高频 timer，也不应逐帧读取或缩放磁盘素材。运行时当前只注册 `blink_normal`；其余动作 Manifest 是禁用的规划资料。
+`AnimationController` 持有唯一的高频 30 FPS `QTimer`。`ActionPlayer` 使用同一时间源推进动作，不应创建第二个高频 timer，也不应逐帧读取或缩放磁盘素材。运行时当前注册 `blink_normal` 与 `drowsy_sleep_cycle`；鼻涕泡由窗口独立绘制，其他规划动作 Manifest 仍保持禁用。
 
 ## 高级互动计划
 

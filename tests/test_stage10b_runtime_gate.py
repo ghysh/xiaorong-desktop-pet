@@ -1,4 +1,4 @@
-"""Only blink_normal is ready; no Stage 10C+ feature leaks into runtime."""
+"""Runtime manifest gates remain strict after enabling the drowsy-sleep clip."""
 
 from __future__ import annotations
 
@@ -20,19 +20,19 @@ from desktop_pet.settings.model import UserSettings
 from desktop_pet.ui.pet_window import PetWindow
 
 
-def test_only_blink_is_ready_and_other_eight_actions_remain_planned() -> None:
+def test_blink_and_drowsy_sleep_are_ready_and_other_eight_actions_remain_planned() -> None:
     manifests = [json.loads(path.read_text(encoding="utf-8")) for path in ACTIONS_DIR.rglob("manifest.json")]
     ready = [item for item in manifests if item["status"] == "ready"]
     planned = [item for item in manifests if item["status"] == "planned"]
-    assert [item["action_id"] for item in ready] == ["blink_normal"]
+    assert {item["action_id"] for item in ready} == {"blink_normal", "drowsy_sleep_cycle"}
     assert len(planned) == 8
     assert all(not item["runtime_enabled"] and not item["assets_complete"] and not item["frames"] for item in planned)
 
 
-def test_runtime_registers_only_blink_and_still_has_one_high_frequency_timer() -> None:
+def test_runtime_registers_blink_and_sleep_with_one_high_frequency_timer() -> None:
     create_application(["pytest-stage10b-gate"])
     window = PetWindow()
-    assert window.runtime_action_registry.action_ids == ("blink_normal",)
+    assert window.runtime_action_registry.action_ids == ("blink_normal", "drowsy_sleep_cycle")
     assert len(window.findChildren(QTimer)) == 1
     action_sources = "\n".join(
         path.read_text(encoding="utf-8")
@@ -69,7 +69,8 @@ def test_manifest_rejects_unapproved_source_hash() -> None:
 def test_stage10b_does_not_add_settings_motion_reminders_dance_or_packaging() -> None:
     assert set(UserSettings.__dataclass_fields__) == {
         "schema_version", "size", "always_on_top", "animation_enabled", "behavior_enabled",
-        "click_reaction_enabled", "remember_position", "window_x", "window_y", "screen_name",
+        "drowsy_sleep_enabled", "click_reaction_enabled", "remember_position",
+        "window_x", "window_y", "screen_name",
     }
     assert sorted(path.name for path in ANIMATIONS_DIR.iterdir()) == [".gitkeep"]
     runtime = "\n".join(

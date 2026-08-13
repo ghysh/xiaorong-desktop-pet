@@ -90,6 +90,9 @@ class SettingsService(QObject):
     def set_behavior_enabled(self, enabled: bool) -> UserSettings:
         return self.apply(replace(self._settings, behavior_enabled=enabled))
 
+    def set_drowsy_sleep_enabled(self, enabled: bool) -> UserSettings:
+        return self.apply(replace(self._settings, drowsy_sleep_enabled=enabled))
+
     def set_click_reaction_enabled(self, enabled: bool) -> UserSettings:
         return self.apply(replace(self._settings, click_reaction_enabled=enabled))
 

@@ -16,7 +16,7 @@ def test_windows_manifest_is_non_elevated_and_high_dpi_aware() -> None:
 
 
 def test_windows_version_info_matches_release_without_fake_identity() -> None:
-    text = (PROJECT_ROOT / "packaging/windows/version_info_1_1_0.txt").read_text(encoding="utf-8")
+    text = (PROJECT_ROOT / "packaging/windows/version_info_1_2_0.txt").read_text(encoding="utf-8")
     assert f"FileVersion', u'{__version__}.0'" in text
     assert f"ProductVersion', u'{__version__}.0'" in text
     for value in ("小融桌宠", "小融", "小融.exe"):

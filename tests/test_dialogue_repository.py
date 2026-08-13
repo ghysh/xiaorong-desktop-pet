@@ -15,7 +15,7 @@ def test_utf8_bom_chinese_blank_and_spacing_rules(tmp_path: Path) -> None:
     path.write_text("  你好！  \n\n# 不是注释\n中间  空格\n", encoding="utf-8-sig")
     repository = DialogueRepository(path)
 
-    assert repository.load() == ("你好！", "# 不是注释", "中间  空格")
+    assert repository.load() == ("  你好！  ", "# 不是注释", "中间  空格")
     assert repository.encoding == "utf-8-sig"
     assert repository.blank_line_count == 1
 

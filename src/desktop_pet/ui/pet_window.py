@@ -13,22 +13,28 @@ from PySide6.QtCore import QElapsedTimer, QPoint, QPointF, QRect, QRectF, QSize,
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
+    QColor,
     QContextMenuEvent,
     QHideEvent,
     QImage,
     QMouseEvent,
     QMoveEvent,
     QPainter,
+    QPainterPath,
     QPaintEvent,
+    QPen,
     QPixmap,
+    QRadialGradient,
     QResizeEvent,
     QShowEvent,
 )
 from PySide6.QtWidgets import QApplication, QMenu, QWidget
 
 from desktop_pet.actions.cache import ActionAssetCache
+from desktop_pet.actions.model import ActionCategory
 from desktop_pet.actions.playback import PlaybackFrame
 from desktop_pet.actions.registry import ActionRuntimeRegistry
+from desktop_pet.actions.sleep import SleepBubbleState
 from desktop_pet.actions.validation import load_runtime_registry
 from desktop_pet.animation.controller import AnimationController
 from desktop_pet.animation.transform import AnimationTransform, transformed_bounds
@@ -45,6 +51,8 @@ if TYPE_CHECKING:
 
 EXPECTED_RUNTIME_ASSET_SHA256 = "6FD2E4CA948E250926A22428AA633AF83F487971086ABA92B1017C3599747A64"
 EXPECTED_RUNTIME_ASSET_SIZE = (1024, 1536)
+REPLACEMENT_CROSSFADE_EVENTS = frozenset({"sit_down_start", "return_default"})
+REPLACEMENT_CROSSFADE_DURATION_MS = 140.0
 
 
 class PetAssetError(RuntimeError):
@@ -160,6 +168,9 @@ class PetWindow(QWidget):
         self._runtime_asset_load_count = 1
         self._current_overlay_frame: PlaybackFrame | None = None
         self._current_overlay_pixmap: QPixmap | None = None
+        self._current_overlay_replaces_base = False
+        self._previous_replacement_pixmap: QPixmap | None = None
+        self._sleep_bubble_state = SleepBubbleState.hidden()
 
         flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool
         if self.config.always_on_top:
@@ -195,6 +206,7 @@ class PetWindow(QWidget):
             self.config.animation,
             behavior_config=self.config.behavior,
             blink_config=self.config.blink,
+            drowsy_sleep_config=self.config.drowsy_sleep,
             action_registry=self._runtime_action_registry,
             effective_drag_tilt_max_degrees=self._effective_drag_tilt_max_degrees,
             parent=self,
@@ -202,6 +214,7 @@ class PetWindow(QWidget):
         self._current_transform = AnimationTransform.identity()
         self._animation_controller.transform_changed.connect(self._on_transform_changed)
         self._animation_controller.overlay_frame_changed.connect(self._on_overlay_frame_changed)
+        self._animation_controller.sleep_bubble_changed.connect(self._on_sleep_bubble_changed)
 
     @property
     def animation_controller(self) -> AnimationController:
@@ -307,16 +320,16 @@ class PetWindow(QWidget):
         return {name: self.is_transform_safe(transform) for name, transform in transforms.items()}
 
     def paintEvent(self, event: QPaintEvent) -> None:
-        """Paint the cached pixmap using only overall translation, anchor rotation, and scale."""
+        """Paint the cached character and independent effects under one safe transform."""
         del event
         self._paint_count += 1
         painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         painter.save()
         self._current_transform.apply_to_painter(painter, self._animation_anchor)
-        painter.drawPixmap(0, 0, self._scaled_pixmap)
-        if self._current_overlay_pixmap is not None:
-            painter.drawPixmap(0, 0, self._current_overlay_pixmap)
+        self._paint_character_layer(painter)
+        self._paint_sleep_bubble(painter)
         painter.restore()
 
     def showEvent(self, event: QShowEvent) -> None:
@@ -501,6 +514,9 @@ class PetWindow(QWidget):
     def set_behavior_enabled(self, enabled: bool) -> None:
         self._animation_controller.set_behavior_enabled(enabled)
 
+    def set_drowsy_sleep_enabled(self, enabled: bool) -> None:
+        self._animation_controller.set_drowsy_sleep_enabled(enabled)
+
     def set_click_reaction_enabled(self, enabled: bool) -> None:
         self._animation_controller.set_click_reaction_enabled(enabled)
 
@@ -510,10 +526,15 @@ class PetWindow(QWidget):
         self.update()
 
     def _on_overlay_frame_changed(self, playback_frame: PlaybackFrame | None) -> None:
-        """Swap only a cached full-canvas overlay and repaint under the existing transform."""
+        """Swap a cached keyframe, retaining a fade source only at approved clip boundaries."""
+        previous_frame = self._current_overlay_frame
+        previous_pixmap = self._current_overlay_pixmap
+        previous_replaced_base = self._current_overlay_replaces_base
         self._current_overlay_frame = playback_frame
         if playback_frame is None:
             self._current_overlay_pixmap = None
+            self._current_overlay_replaces_base = False
+            self._previous_replacement_pixmap = None
         else:
             clip = self._animation_controller.action_player.current_clip
             if clip is None:
@@ -523,7 +544,77 @@ class PetWindow(QWidget):
                 playback_frame.frame.asset_path,
                 self.size(),
             )
+            self._current_overlay_replaces_base = clip.category in {
+                ActionCategory.FRAME_SEQUENCE,
+                ActionCategory.USER_SELECTED,
+            }
+            changed_asset = (
+                previous_frame is None
+                or previous_frame.frame.asset_path != playback_frame.frame.asset_path
+            )
+            crossfade_allowed = playback_frame.frame.event in REPLACEMENT_CROSSFADE_EVENTS
+            if self._current_overlay_replaces_base and changed_asset and crossfade_allowed:
+                self._previous_replacement_pixmap = (
+                    previous_pixmap if previous_replaced_base and previous_pixmap is not None else self._scaled_pixmap
+                )
+            else:
+                self._previous_replacement_pixmap = None
         self.update()
+
+    def _on_sleep_bubble_changed(self, state: SleepBubbleState) -> None:
+        """Update only the independent nasal-bubble render state."""
+        self._sleep_bubble_state = state
+        self.update()
+
+    def _paint_character_layer(self, painter: QPainter) -> None:
+        if self._current_overlay_pixmap is not None and self._current_overlay_replaces_base:
+            frame_elapsed = self._animation_controller.action_player.current_frame_elapsed_ms
+            blend = min(1.0, frame_elapsed / REPLACEMENT_CROSSFADE_DURATION_MS)
+            if self._previous_replacement_pixmap is not None and blend < 1.0:
+                painter.setOpacity(1.0 - blend)
+                painter.drawPixmap(0, 0, self._previous_replacement_pixmap)
+            painter.setOpacity(blend if self._previous_replacement_pixmap is not None else 1.0)
+            painter.drawPixmap(0, 0, self._current_overlay_pixmap)
+            painter.setOpacity(1.0)
+            return
+        painter.drawPixmap(0, 0, self._scaled_pixmap)
+        if self._current_overlay_pixmap is not None:
+            painter.drawPixmap(0, 0, self._current_overlay_pixmap)
+
+    def _paint_sleep_bubble(self, painter: QPainter) -> None:
+        state = self._sleep_bubble_state
+        if not state.visible:
+            return
+        width = max(9.0, self.width() * 0.036)
+        height = width * 0.82
+        nose_anchor = QPointF(state.anchor_x * self.width(), state.anchor_y * self.height())
+        path = QPainterPath()
+        path.moveTo(-0.60 * width, 0.10 * height)
+        path.cubicTo(-0.78 * width, 0.13 * height, -0.84 * width, 0.04 * height, -0.91 * width, 0.0)
+        path.cubicTo(-0.75 * width, -0.06 * height, -0.67 * width, -0.34 * height, -0.42 * width, -0.46 * height)
+        path.cubicTo(-0.08 * width, -0.64 * height, 0.44 * width, -0.48 * height, 0.59 * width, -0.12 * height)
+        path.cubicTo(0.76 * width, 0.28 * height, 0.45 * width, 0.58 * height, 0.04 * width, 0.60 * height)
+        path.cubicTo(-0.27 * width, 0.62 * height, -0.52 * width, 0.43 * height, -0.60 * width, 0.10 * height)
+        path.closeSubpath()
+
+        painter.save()
+        painter.setOpacity(state.opacity)
+        painter.translate(nose_anchor)
+        painter.rotate(state.rotation_degrees)
+        painter.translate(2.0 + 0.72 * width, -0.18 * height)
+        painter.scale(state.scale, state.scale)
+        gradient = QRadialGradient(QPointF(-0.15 * width, -0.22 * height), 0.90 * width)
+        gradient.setColorAt(0.0, QColor(255, 255, 255, 235))
+        gradient.setColorAt(0.55, QColor(218, 244, 255, 205))
+        gradient.setColorAt(1.0, QColor(154, 214, 239, 165))
+        pen = QPen(QColor(118, 183, 213, 205))
+        pen.setWidthF(max(0.8, self.width() / 280.0))
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen)
+        painter.setBrush(gradient)
+        painter.drawPath(path)
+        painter.restore()
 
     def _rebuild_scaled_cache(self) -> None:
         """Regenerate size-dependent data from memory without reopening the protected PNG."""
@@ -551,6 +642,7 @@ class PetWindow(QWidget):
                 self._current_overlay_frame.frame.asset_path,
                 self.size(),
             )
+        self._previous_replacement_pixmap = None
 
     def _clear_pointer_gesture(self) -> None:
         self._drag_offset = None

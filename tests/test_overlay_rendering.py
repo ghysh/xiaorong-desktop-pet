@@ -53,6 +53,8 @@ def test_size_switch_keeps_current_frame_and_reuses_source_qimages() -> None:
 def test_source_draw_and_overlay_draw_share_one_saved_painter_transform() -> None:
     source = open("src/desktop_pet/ui/pet_window.py", encoding="utf-8").read()
     paint = source[source.index("def paintEvent"):source.index("def showEvent")]
+    character_paint = source[source.index("def _paint_character_layer"):source.index("def _paint_sleep_bubble")]
     assert paint.count("apply_to_painter") == 1
-    assert "drawPixmap(0, 0, self._scaled_pixmap)" in paint
-    assert "drawPixmap(0, 0, self._current_overlay_pixmap)" in paint
+    assert "_paint_character_layer(painter)" in paint
+    assert "drawPixmap(0, 0, self._scaled_pixmap)" in character_paint
+    assert "drawPixmap(0, 0, self._current_overlay_pixmap)" in character_paint

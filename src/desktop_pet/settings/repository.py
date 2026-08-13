@@ -50,6 +50,10 @@ class SettingsRepository:
             store.value("behavior/enabled"),
             defaults.behavior_enabled,
         )
+        drowsy_sleep_enabled = _parse_bool(
+            store.value("autonomous_actions/drowsy_sleep_enabled"),
+            defaults.drowsy_sleep_enabled,
+        )
         click_reaction_enabled = _parse_bool(
             store.value("interaction/click_reaction_enabled"),
             defaults.click_reaction_enabled,
@@ -72,6 +76,7 @@ class SettingsRepository:
             always_on_top=always_on_top,
             animation_enabled=animation_enabled,
             behavior_enabled=behavior_enabled,
+            drowsy_sleep_enabled=drowsy_sleep_enabled,
             click_reaction_enabled=click_reaction_enabled,
             remember_position=remember_position,
             window_x=window_x,
@@ -90,6 +95,10 @@ class SettingsRepository:
         store.setValue("appearance/always_on_top", settings.always_on_top)
         store.setValue("animation/enabled", settings.animation_enabled)
         store.setValue("behavior/enabled", settings.behavior_enabled)
+        store.setValue(
+            "autonomous_actions/drowsy_sleep_enabled",
+            settings.drowsy_sleep_enabled,
+        )
         store.setValue("interaction/click_reaction_enabled", settings.click_reaction_enabled)
         store.setValue("window/remember_position", settings.remember_position)
         if settings.remember_position and settings.window_x is not None and settings.window_y is not None:

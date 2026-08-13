@@ -19,7 +19,12 @@ PLANNED_MANIFEST_RELATIVE_PATHS = (
     "dances/dance_spin/manifest.json",
 )
 BLINK_MANIFEST_RELATIVE_PATH = "blink/manifest.json"
-ALL_ACTION_MANIFEST_RELATIVE_PATHS = (BLINK_MANIFEST_RELATIVE_PATH, *PLANNED_MANIFEST_RELATIVE_PATHS)
+DROWSY_SLEEP_MANIFEST_RELATIVE_PATH = "drowsy_sleep/manifest.json"
+RUNTIME_MANIFEST_RELATIVE_PATHS = (
+    BLINK_MANIFEST_RELATIVE_PATH,
+    DROWSY_SLEEP_MANIFEST_RELATIVE_PATH,
+)
+ALL_ACTION_MANIFEST_RELATIVE_PATHS = (*RUNTIME_MANIFEST_RELATIVE_PATHS, *PLANNED_MANIFEST_RELATIVE_PATHS)
 FORBIDDEN_ACTION_IMAGE_SUFFIXES = frozenset({".apng", ".gif", ".jpeg", ".jpg", ".png", ".webp"})
 
 
@@ -54,7 +59,11 @@ def find_action_images(actions_root: Path | str) -> tuple[Path, ...]:
     return tuple(
         path
         for path in sorted(root.rglob("*"))
-        if path.is_file() and path.suffix.casefold() in FORBIDDEN_ACTION_IMAGE_SUFFIXES
+        if (
+            path.is_file()
+            and path.suffix.casefold() in FORBIDDEN_ACTION_IMAGE_SUFFIXES
+            and not {"preview", "previews", "diagnostics"}.intersection(path.relative_to(root).parts)
+        )
     )
 
 
@@ -62,7 +71,7 @@ def load_runtime_registry(actions_root: Path | str, cache: object) -> ActionRunt
     """Load only explicitly shipped runtime manifests; planning files are development-only."""
     root = Path(actions_root)
     registry = ActionRuntimeRegistry()
-    for relative_path in (BLINK_MANIFEST_RELATIVE_PATH,):
+    for relative_path in RUNTIME_MANIFEST_RELATIVE_PATHS:
         manifest_path = root / relative_path
         manifest = load_action_manifest(manifest_path)
         registry.register_manifest(manifest, manifest_path, cache)  # type: ignore[arg-type]

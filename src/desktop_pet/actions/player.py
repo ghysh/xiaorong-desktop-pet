@@ -68,6 +68,17 @@ class ActionPlayer(QObject):
     def is_paused(self) -> bool:
         return self._paused_at_seconds is not None
 
+    @property
+    def current_frame_elapsed_ms(self) -> int:
+        """Return bounded elapsed time inside the current frame for visual crossfades."""
+        if self._current_playback_frame is None:
+            return 0
+        action_elapsed_ms = self._action_elapsed_ms(self._last_elapsed_seconds)
+        return max(0, min(
+            action_elapsed_ms - self._current_playback_frame.starts_at_ms,
+            self._current_playback_frame.frame.duration_ms,
+        ))
+
     def start(self, clip: ActionClip, elapsed_seconds: float, *, loop_count: int | None = None) -> None:
         self._validate_time(elapsed_seconds, allow_before_last=False)
         if self._clip is not None:

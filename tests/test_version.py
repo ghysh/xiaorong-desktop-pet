@@ -12,9 +12,9 @@ from desktop_pet.config import WINDOW_TITLE
 
 
 def test_version_has_one_canonical_value() -> None:
-    assert __version__ == "1.1.0"
-    assert VERSION_TUPLE == (1, 1, 0)
-    assert WINDOWS_FILE_VERSION == (1, 1, 0, 0)
+    assert __version__ == "1.2.0"
+    assert VERSION_TUPLE == (1, 2, 0)
+    assert WINDOWS_FILE_VERSION == (1, 2, 0, 0)
 
 
 def test_qapplication_uses_release_metadata() -> None:

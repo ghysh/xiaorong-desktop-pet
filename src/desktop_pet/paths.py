@@ -60,8 +60,12 @@ BLINK_FRAMES_DIR = BLINK_ACTION_DIR / "frames"
 BLINK_PREVIEWS_DIR = BLINK_ACTION_DIR / "previews"
 BLINK_DIAGNOSTICS_DIR = BLINK_ACTION_DIR / "diagnostics"
 BLINK_MANIFEST = BLINK_ACTION_DIR / "manifest.json"
+DROWSY_SLEEP_ACTION_DIR = ACTIONS_DIR / "drowsy_sleep"
+DROWSY_SLEEP_FRAMES_DIR = DROWSY_SLEEP_ACTION_DIR / "frames"
+DROWSY_SLEEP_MANIFEST = DROWSY_SLEEP_ACTION_DIR / "manifest.json"
 CLICK_REPLY_DIR = ACTIONS_DIR / "click_reply"
 CLICK_DIALOGUE_FILE = CLICK_REPLY_DIR / "dialogue.txt"
+DIALOGUE_BUBBLE_FRAME = CLICK_REPLY_DIR / "dialogue_bubble_frame.png"
 DIALOGUE_ANALYSIS_DIR = ANALYSIS_DIR / "dialogue"
 
 # Historical source-only paths are retained for development tools, never packaged.

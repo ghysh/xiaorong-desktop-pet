@@ -17,6 +17,7 @@ def test_round_trip_uses_injected_directory_and_syncs_ini(tmp_path: Path) -> Non
         size=PetSize.LARGE,
         always_on_top=False,
         behavior_enabled=False,
+        drowsy_sleep_enabled=False,
         window_x=-350,
         window_y=80,
         screen_name="left",
@@ -36,6 +37,7 @@ def test_invalid_fields_recover_independently_and_unknown_fields_are_ignored(tmp
     store.setValue("appearance/always_on_top", "false")
     store.setValue("animation/enabled", "garbage")
     store.setValue("behavior/enabled", "false")
+    store.setValue("autonomous_actions/drowsy_sleep_enabled", "false")
     store.setValue("window/x", "not-an-int")
     store.setValue("window/y", 50)
     store.setValue("future/unknown", "safe")
@@ -46,6 +48,7 @@ def test_invalid_fields_recover_independently_and_unknown_fields_are_ignored(tmp
     assert not loaded.always_on_top
     assert loaded.animation_enabled
     assert not loaded.behavior_enabled
+    assert not loaded.drowsy_sleep_enabled
     assert loaded.window_x is None and loaded.window_y is None
 
 

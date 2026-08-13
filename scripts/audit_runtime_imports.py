@@ -10,7 +10,7 @@ import sys
 from desktop_pet.paths import PROJECT_ROOT
 
 SOURCE_ROOT = PROJECT_ROOT / "src" / "desktop_pet"
-REPORT_PATH = PROJECT_ROOT / "build" / "reports" / "runtime_import_audit_1_1_0.json"
+REPORT_PATH = PROJECT_ROOT / "build" / "reports" / "runtime_import_audit_1_2_0.json"
 ALLOWED_THIRD_PARTY = {"PIL", "PySide6"}
 FORBIDDEN = {"PyInstaller", "cv2", "httpx", "matplotlib", "numpy", "pytest", "requests", "ruff"}
 ABSOLUTE_PATH_PATTERN = re.compile(r"(?i)(?:[a-z]:[\\/]|D:\\DesktopPet)")

@@ -1,9 +1,8 @@
-"""Audit the minimal XiaoRong 1.1.0 release directory and PyInstaller archive."""
+"""Audit the minimal XiaoRong 1.2.0 release directory and PyInstaller archive."""
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 
@@ -13,18 +12,29 @@ from desktop_pet.paths import PROJECT_ROOT
 from desktop_pet.version import __version__
 
 EXECUTABLE_NAME = f"小融-{__version__}-win64.exe"
-GUIDE_NAME = "使用说明.txt"
-CHECKSUM_NAME = "checksums.sha256"
-EXPECTED_RELEASE_FILES = frozenset({EXECUTABLE_NAME, GUIDE_NAME, CHECKSUM_NAME})
+EXPECTED_RELEASE_FILES = frozenset({EXECUTABLE_NAME})
+DROWSY_SLEEP_MANIFEST = PROJECT_ROOT / "assets" / "actions" / "drowsy_sleep" / "manifest.json"
+DROWSY_SLEEP_FRAME_ENTRIES = tuple(
+    f"assets/actions/drowsy_sleep/{path.as_posix()}"
+    for path in sorted(
+        {
+            Path(frame["asset_path"])
+            for frame in json.loads(DROWSY_SLEEP_MANIFEST.read_text(encoding="utf-8"))["frames"]
+        }
+    )
+)
 REQUIRED_ARCHIVE_ENTRIES = (
     "assets/fullbody/final/fullbody_runtime_master.png",
     "assets/actions/click_reply/dialogue.txt",
+    "assets/actions/click_reply/dialogue_bubble_frame.png",
     "assets/icons/character_original.ico",
     "assets/actions/blink/manifest.json",
     "assets/actions/blink/frames/blink_open.png",
     "assets/actions/blink/frames/blink_half_closed.png",
     "assets/actions/blink/frames/blink_closed.png",
     "assets/actions/blink/frames/blink_half_open.png",
+    "assets/actions/drowsy_sleep/manifest.json",
+    *DROWSY_SLEEP_FRAME_ENTRIES,
 )
 FORBIDDEN_ARCHIVE_FRAGMENTS = (
     "ori_figure",
@@ -42,42 +52,21 @@ FORBIDDEN_ARCHIVE_FRAGMENTS = (
     "assets/actions/sleep_cross_legged",
     "assets/actions/wake_up",
     "assets/actions/dances",
+    "source_notes.md",
     "tests/",
     "docs/",
     "scripts/",
+    "release_archive",
+    ".git",
     ".pytest_cache",
     ".ruff_cache",
 )
 FORBIDDEN_ANALYSIS_MODULES = ("cv2", "numpy", "pytest", "ruff", "tkinter")
 
 
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest().upper()
-
-
 def archive_entries(executable: Path) -> tuple[str, ...]:
     archive = CArchiveReader(str(executable))
     return tuple(sorted(str(name).replace("\\", "/") for name in archive.toc))
-
-
-def parse_checksums(path: Path) -> dict[str, str]:
-    records: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8-sig").splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        digest, marker, relative = stripped.partition(" *")
-        if not marker or len(digest) != 64:
-            raise ValueError(f"Invalid checksum line: {line!r}")
-        relative_path = Path(relative)
-        if relative_path.is_absolute() or ".." in relative_path.parts or relative in records:
-            raise ValueError(f"Non-portable checksum entry: {relative}")
-        records[relative] = digest.upper()
-    return records
 
 
 def audit_release(
@@ -97,8 +86,6 @@ def audit_release(
         if path.is_dir()
     }
     executable = release_dir / EXECUTABLE_NAME
-    guide = release_dir / GUIDE_NAME
-    checksum_path = release_dir / CHECKSUM_NAME
     entries = archive_entries(executable) if executable.is_file() else ()
     folded_entries = tuple(entry.casefold() for entry in entries)
     missing_archive_entries = [
@@ -113,14 +100,6 @@ def audit_release(
         entry for entry in entries if entry.casefold().endswith("pyside6/plugins/platforms/qwindows.dll")
     ]
 
-    checksum_records = parse_checksums(checksum_path) if checksum_path.is_file() else {}
-    checksum_targets = {EXECUTABLE_NAME, GUIDE_NAME}
-    checksum_mismatches = [
-        name
-        for name, digest in checksum_records.items()
-        if not (release_dir / name).is_file() or sha256_file(release_dir / name) != digest
-    ]
-
     analysis_hits: list[str] = []
     if analysis_toc is not None:
         toc_text = analysis_toc.read_text(encoding="utf-8", errors="replace")
@@ -128,11 +107,8 @@ def audit_release(
 
     checks = {
         "release_directory_exists": release_dir.is_dir(),
-        "exact_three_files": actual_files == EXPECTED_RELEASE_FILES and not actual_directories,
+        "exact_one_file": actual_files == EXPECTED_RELEASE_FILES and not actual_directories,
         "executable_nonempty": executable.is_file() and executable.stat().st_size > 0,
-        "guide_nonempty_utf8": guide.is_file() and bool(guide.read_text(encoding="utf-8-sig").strip()),
-        "checksum_entries_exact": set(checksum_records) == checksum_targets,
-        "checksum_values_match": not checksum_mismatches,
         "required_runtime_resources": not missing_archive_entries,
         "development_resources_absent": not forbidden_archive_entries,
         "qt_windows_platform_plugin": len(qt_platform_plugins) == 1,
@@ -149,8 +125,6 @@ def audit_release(
         "missing_archive_entries": missing_archive_entries,
         "forbidden_archive_entries": forbidden_archive_entries,
         "qt_windows_platform_plugins": qt_platform_plugins,
-        "checksum_records": checksum_records,
-        "checksum_mismatches": checksum_mismatches,
         "analysis_toc": None if analysis_toc is None else str(analysis_toc.resolve()),
         "forbidden_analysis_modules": analysis_hits,
     }
@@ -163,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--report",
         type=Path,
-        default=PROJECT_ROOT / "build" / "reports" / "release_contents_audit_1_1_0.json",
+        default=PROJECT_ROOT / "build" / "reports" / "release_contents_audit_1_2_0.json",
     )
     namespace = parser.parse_args(argv)
     report = audit_release(namespace.release_dir, analysis_toc=namespace.analysis_toc)

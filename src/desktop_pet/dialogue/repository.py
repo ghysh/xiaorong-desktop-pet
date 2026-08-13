@@ -34,7 +34,7 @@ class DialogueRepository:
         return self._blank_line_count
 
     def load(self) -> tuple[str, ...]:
-        """Read once, trim line edges, ignore blanks, and return a cached tuple."""
+        """Read once, preserve nonblank lines verbatim, and return a cached tuple."""
         if self._dialogues is not None:
             return self._dialogues
         try:
@@ -59,7 +59,7 @@ class DialogueRepository:
 
         lines = decoded.splitlines()
         self._blank_line_count = sum(not line.strip() for line in lines)
-        dialogues = tuple(line.strip() for line in lines if line.strip())
+        dialogues = tuple(line for line in lines if line.strip())
         if not dialogues:
             raise DialogueFileError(f"Dialogue file contains no non-empty dialogue: {self.path}")
         self._dialogues = dialogues

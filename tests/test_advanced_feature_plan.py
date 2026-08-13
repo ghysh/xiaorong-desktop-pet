@@ -40,6 +40,7 @@ def test_stage_10a_keeps_assets_settings_and_runtime_features_unchanged() -> Non
         "always_on_top",
         "animation_enabled",
         "behavior_enabled",
+        "drowsy_sleep_enabled",
         "click_reaction_enabled",
         "remember_position",
         "window_x",

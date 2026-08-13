@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -46,13 +47,13 @@ def test_every_planned_manifest_parses_and_remains_non_runnable() -> None:
             manifest.to_clip()
 
 
-def test_action_asset_tree_contains_only_the_four_ready_blink_images() -> None:
-    assert {path.name for path in find_action_images(ACTIONS_ROOT)} == {
-        "blink_open.png",
-        "blink_half_closed.png",
-        "blink_closed.png",
-        "blink_half_open.png",
-    }
+def test_action_asset_tree_contains_only_ready_runtime_images() -> None:
+    expected_images = {"dialogue_bubble_frame.png"}
+    for relative_manifest in ("blink/manifest.json", "drowsy_sleep/manifest.json"):
+        payload = json.loads((ACTIONS_ROOT / relative_manifest).read_text(encoding="utf-8"))
+        expected_images.update(Path(frame["asset_path"]).name for frame in payload["frames"])
+    expected_images.add("sleep_nod.png")  # Retained legacy endpoint; no longer packaged or played.
+    assert {path.name for path in find_action_images(ACTIONS_ROOT)} == expected_images
     for relative_path in PLANNED_MANIFEST_RELATIVE_PATHS:
         payload = json.loads((ACTIONS_ROOT / relative_path).read_text(encoding="utf-8"))
         assert payload["frames"] == []

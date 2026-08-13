@@ -14,11 +14,17 @@ import time
 from ctypes import wintypes
 from pathlib import Path
 
+from desktop_pet.paths import DROWSY_SLEEP_MANIFEST
 from desktop_pet.ui.pet_window import EXPECTED_RUNTIME_ASSET_SHA256
 from desktop_pet.version import WINDOWS_FILE_VERSION, __version__
 
 PRODUCT_NAME = "小融"
 EXPECTED_SIZES = [[240, 360], [280, 420], [320, 480]]
+_DROWSY_PAYLOAD = json.loads(DROWSY_SLEEP_MANIFEST.read_text(encoding="utf-8"))
+EXPECTED_DROWSY_FRAME_COUNT = len(_DROWSY_PAYLOAD["frames"])
+EXPECTED_DROWSY_UNIQUE_ASSET_COUNT = len(
+    {frame["asset_path"] for frame in _DROWSY_PAYLOAD["frames"]}
+)
 DEVELOPMENT_PATH_NEEDLES = (
     r"D:\DesktopPet",
     r"D:\anaconda3",
@@ -205,6 +211,7 @@ def run_frozen_smoke(
     *,
     label: str,
     quit_after_ms: int = 3000,
+    enable_tray: bool = False,
 ) -> dict[str, object]:
     """Launch the EXE directly, observe its real window, and wait for a clean exit."""
     executable = executable.resolve()
@@ -216,18 +223,19 @@ def run_frozen_smoke(
         result_path = temporary_root / "smoke_result.json"
         config_dir = temporary_root / "config"
         started_at = time.perf_counter()
+        command = [
+            str(executable),
+            "--release-smoke-test",
+            "--quit-after-ms",
+            str(quit_after_ms),
+            "--config-dir",
+            str(config_dir),
+        ]
+        if not enable_tray:
+            command.append("--no-tray")
+        command.extend(("--smoke-result", str(result_path)))
         process = subprocess.Popen(
-            [
-                str(executable),
-                "--release-smoke-test",
-                "--quit-after-ms",
-                str(quit_after_ms),
-                "--config-dir",
-                str(config_dir),
-                "--no-tray",
-                "--smoke-result",
-                str(result_path),
-            ],
+            command,
             cwd=working_directory,
             env=sanitized_environment(),
             stdin=subprocess.DEVNULL,
@@ -276,6 +284,7 @@ def verify_executable(
     kind: str,
     label: str,
     expected_name: str | None = None,
+    require_tray: bool = False,
 ) -> dict[str, object]:
     executable = executable.resolve()
     if kind not in {"onedir", "onefile"}:
@@ -289,10 +298,23 @@ def verify_executable(
     assert isinstance(strings, dict)
     runtime_asset = executable.parent / "_internal" / "assets" / "fullbody" / "final" / "fullbody_runtime_master.png"
     dialogue = executable.parent / "_internal" / "assets" / "actions" / "click_reply" / "dialogue.txt"
+    bubble_frame = (
+        executable.parent
+        / "_internal"
+        / "assets"
+        / "actions"
+        / "click_reply"
+        / "dialogue_bubble_frame.png"
+    )
     qwindows = list(executable.parent.rglob("qwindows.dll")) if kind == "onedir" else []
 
     with tempfile.TemporaryDirectory(prefix="xiaorong_clean_cwd_") as clean_working_directory:
-        smoke = run_frozen_smoke(executable, Path(clean_working_directory), label=label)
+        smoke = run_frozen_smoke(
+            executable,
+            Path(clean_working_directory),
+            label=label,
+            enable_tray=require_tray,
+        )
     snapshot = smoke["snapshot"]
     assert isinstance(snapshot, dict)
     checks = {
@@ -319,13 +341,32 @@ def verify_executable(
         "application_icon_loaded": snapshot.get("application_icon_available") is True,
         "single_pet_window": snapshot.get("window_count") == 1,
         "translucent_window": snapshot.get("translucent_background") is True,
+        "always_on_top": snapshot.get("always_on_top") is True,
+        "alpha_hit_region": snapshot.get("alpha_hit_region_nonempty") is True,
+        "sole_high_frequency_timer": snapshot.get("high_frequency_timer_count") == 1,
         "runtime_asset_hash": snapshot.get("runtime_asset_sha256") == EXPECTED_RUNTIME_ASSET_SHA256,
-        "runtime_actions_minimal": snapshot.get("runtime_action_ids") == ["blink_normal"],
+        "runtime_actions_minimal": snapshot.get("runtime_action_ids")
+        == ["blink_normal", "drowsy_sleep_cycle"],
         "dialogue_available": snapshot.get("dialogue_available") is True,
+        "click_dialogue_displayed": snapshot.get("click_dialogue_displayed") is True,
+        "dialogue_bubble_visible": snapshot.get("dialogue_bubble_visible") is True,
+        "dialogue_text_nonempty": snapshot.get("dialogue_text_nonempty") is True,
+        "drowsy_menu_actions": snapshot.get("drowsy_menu_actions") == ["开", "关", "演示"],
+        "drowsy_setting_round_trip": snapshot.get("drowsy_disabled_persisted") is True
+        and snapshot.get("drowsy_enabled_persisted") is True,
+        "drowsy_demo_started": snapshot.get("drowsy_demo_started") is True,
+        "drowsy_frame_count": snapshot.get("drowsy_frame_count") == EXPECTED_DROWSY_FRAME_COUNT,
+        "drowsy_unique_assets": snapshot.get("drowsy_unique_asset_count")
+        == EXPECTED_DROWSY_UNIQUE_ASSET_COUNT,
+        "all_drowsy_frames_cached": snapshot.get("all_drowsy_frames_cached") is True,
+        "drowsy_overlay_loaded": snapshot.get("drowsy_overlay_frame_loaded") is True,
+        "sleep_bubble_rendered_and_cleared": snapshot.get("sleep_bubble_visible") is True
+        and snapshot.get("sleep_bubble_cleared") is True,
         "three_sizes_work": snapshot.get("size_switch_results") == EXPECTED_SIZES,
         "position_saved": snapshot.get("position_saved") is True,
         "settings_created": snapshot.get("settings_file_created") is True,
         "normal_terminal_state": snapshot.get("terminal_state") == "STOPPED",
+        "system_tray": snapshot.get("tray_available") is True if require_tray else True,
     }
     if kind == "onedir":
         checks.update(
@@ -333,6 +374,7 @@ def verify_executable(
             bundled_runtime_asset=runtime_asset.is_file()
             and sha256_file(runtime_asset) == EXPECTED_RUNTIME_ASSET_SHA256,
             bundled_dialogue=dialogue.is_file() and dialogue.stat().st_size > 0,
+            bundled_dialogue_bubble_frame=bubble_frame.is_file() and bubble_frame.stat().st_size > 0,
         )
     report = {
         "passed": all(checks.values()),
@@ -344,6 +386,7 @@ def verify_executable(
         "pe": pe,
         "version_info": version_info,
         "development_path_hits": development_path_hits(executable),
+        "tray_required": require_tray,
         "checks": checks,
         "smoke": smoke,
     }
@@ -356,6 +399,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--executable", required=True, type=Path)
     parser.add_argument("--label", default="manual")
     parser.add_argument("--expected-name")
+    parser.add_argument("--require-tray", action="store_true")
     parser.add_argument("--report", required=True, type=Path)
     namespace = parser.parse_args(argv)
     report = verify_executable(
@@ -363,6 +407,7 @@ def main(argv: list[str] | None = None) -> int:
         kind=namespace.kind,
         label=namespace.label,
         expected_name=namespace.expected_name,
+        require_tray=namespace.require_tray,
     )
     namespace.report.parent.mkdir(parents=True, exist_ok=True)
     namespace.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

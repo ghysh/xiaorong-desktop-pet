@@ -105,11 +105,17 @@ class SettingsDialog(QDialog):
     def _settings_from_controls(self) -> UserSettings:
         current = self._settings_service.current
         keep_position = self.remember_position_checkbox.isChecked() and not self._restore_defaults_requested
+        defaults = UserSettings()
         return UserSettings(
             size=PetSize[self.size_combo.currentData()],
             always_on_top=self.always_on_top_checkbox.isChecked(),
             animation_enabled=self.animation_enabled_checkbox.isChecked(),
             behavior_enabled=self.behavior_enabled_checkbox.isChecked(),
+            drowsy_sleep_enabled=(
+                defaults.drowsy_sleep_enabled
+                if self._restore_defaults_requested
+                else current.drowsy_sleep_enabled
+            ),
             click_reaction_enabled=self.click_reaction_enabled_checkbox.isChecked(),
             remember_position=self.remember_position_checkbox.isChecked(),
             window_x=current.window_x if keep_position else None,

@@ -38,6 +38,7 @@ class UserSettings:
     always_on_top: bool = True
     animation_enabled: bool = True
     behavior_enabled: bool = True
+    drowsy_sleep_enabled: bool = True
     click_reaction_enabled: bool = True
     remember_position: bool = True
     window_x: int | None = None
@@ -53,6 +54,7 @@ class UserSettings:
             "always_on_top",
             "animation_enabled",
             "behavior_enabled",
+            "drowsy_sleep_enabled",
             "click_reaction_enabled",
             "remember_position",
         ):

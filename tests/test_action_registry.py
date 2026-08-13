@@ -24,6 +24,8 @@ def test_window_and_tray_menus_share_actions_and_size_group_is_exclusive(tmp_pat
         show_hide_callback=lambda: calls.append("visibility"),
         show_settings_callback=lambda: calls.append("settings"),
         reset_position_callback=lambda: calls.append("reset"),
+        drowsy_sleep_enabled_callback=service.set_drowsy_sleep_enabled,
+        drowsy_sleep_demo_callback=lambda: calls.append("sleep_demo"),
         quit_callback=lambda: calls.append("quit"),
     )
     window = PetWindow()

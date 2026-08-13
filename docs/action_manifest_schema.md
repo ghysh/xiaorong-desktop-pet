@@ -49,4 +49,4 @@ planned manifest 可以解析并进入 `ActionPlanRegistry`，但：
 - 不能进入 UI `ActionRegistry`；
 - 不得打包到当前 1.0.0 运行资源。
 
-只有 `status=ready`、`runtime_enabled=true`、`assets_complete=true`、所有帧存在并通过哈希/画布/锚点/视觉审核时，才能创建并注册 `ActionClip`。draft 和 disabled 也不能注册。阶段 10B 只有 `blink_normal` 通过此门禁，其他八份 manifest 继续保持 planned。
+只有 `status=ready`、`runtime_enabled=true`、`assets_complete=true`、所有帧存在并通过哈希/画布/锚点/视觉审核时，才能创建并注册 `ActionClip`。draft 和 disabled 也不能注册。目前 `blink_normal` 与 `drowsy_sleep_cycle` 通过此门禁，其他八份 manifest 继续保持 planned。

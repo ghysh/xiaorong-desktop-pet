@@ -32,7 +32,7 @@ ONCE 在精确总时长结束并清空；LOOP 按指定循环次数运行；PING
 
 运行注册同时要求 `status=ready`、`runtime_enabled=true`、`assets_complete=true`。缓存再次验证帧路径只能位于对应 `frames/`，文件必须存在、可解码、为 1024×1536 RGBA PNG 且有非空 Alpha。planned、draft、disabled、preview、diagnostics、缺帧、错误尺寸/模式和未批准来源哈希均不能进入运行注册表。
 
-本阶段只注册 `blink_normal`。四张源覆盖层在启动时各读一次；绘制 tick 不读取文件、不缩放、不计算哈希、不扫描 Alpha、不抽取随机数。缓存提供 `clear_action()` 和 `clear_all()`，为后续阶段保留显式生命周期。
+运行时注册 `blink_normal` 与 `drowsy_sleep_cycle`。动作源图在启动时各读一次；绘制 tick 不读取文件、不缩放、不计算哈希、不扫描 Alpha。`FRAME_SEQUENCE` 关键帧替换默认人物层；睡眠动作只在首次进入坐下和最终恢复正式主图时使用 140 ms 短淡化，中段关键帧始终以正常不透明度直接播放。鼻涕泡保持为独立绘制层。缓存提供 `clear_action()` 和 `clear_all()`，保留显式生命周期。
 
 ## Tick 与性能
 

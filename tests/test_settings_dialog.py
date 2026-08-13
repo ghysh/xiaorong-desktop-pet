@@ -40,3 +40,16 @@ def test_restore_defaults_only_changes_controls_until_apply(tmp_path: Path) -> N
     assert dialog.size_combo.currentData() == PetSize.DEFAULT.name
     assert dialog.apply_changes() == UserSettings()
     dialog.close()
+
+
+def test_unexposed_drowsy_sleep_setting_is_preserved_until_restore_defaults(
+    tmp_path: Path,
+) -> None:
+    create_application(["pytest-settings-drowsy"])
+    service = SettingsService(SettingsRepository(tmp_path))
+    service.set_drowsy_sleep_enabled(False)
+    dialog = SettingsDialog(service)
+    assert dialog.apply_changes().drowsy_sleep_enabled is False
+    dialog._show_defaults()
+    assert dialog.apply_changes().drowsy_sleep_enabled is True
+    dialog.close()

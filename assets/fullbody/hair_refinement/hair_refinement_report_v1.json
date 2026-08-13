@@ -1,0 +1,32 @@
+{
+  "master": "assets\\fullbody\\final\\fullbody_runtime_master.png",
+  "master_sha256": "6FD2E4CA948E250926A22428AA633AF83F487971086ABA92B1017C3599747A64",
+  "generated_hair_reference": "assets\\fullbody\\hair_refinement\\hair_refinement_source_v1.png",
+  "candidate": "assets\\fullbody\\hair_refinement\\fullbody_hair_refined_candidate_v1.png",
+  "candidate_sha256": "4063A5F2D1C9AC6A5EBFC65C10494043FBFD6DD14B501B878EE8E12E6E96C856",
+  "canvas": [
+    1024,
+    1536
+  ],
+  "blend_strength": 0.82,
+  "mask_nonzero_pixels": 60608,
+  "changed_pixels": 59694,
+  "changed_pixels_outside_mask": 0,
+  "changed_pixels_below_hair_area_y445": 0,
+  "changed_pixels_in_protected_eye_ellipses": 0,
+  "changed_original_red_accent_pixels": 0,
+  "alpha_channel_byte_exact": true,
+  "corner_alpha": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "protected_invariants": [
+    "original alpha silhouette",
+    "face and eyes",
+    "red ribbons and forehead clips",
+    "pose, body, clothing and accessories"
+  ],
+  "runtime_master_replaced": false
+}

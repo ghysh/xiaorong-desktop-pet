@@ -5,12 +5,12 @@ $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $condaExecutable = "D:\anaconda3\Scripts\conda.exe"
 
 if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
-    Write-Error "小融 1.1.0 只能在 Windows x64 上构建。"
+    Write-Error "小融 1.2.0 只能在 Windows x64 上构建。"
     exit 1
 }
 
 if (-not [Environment]::Is64BitOperatingSystem) {
-    Write-Error "小融 1.1.0 仅支持 64 位 Windows。"
+    Write-Error "小融 1.2.0 仅支持 64 位 Windows。"
     exit 1
 }
 
@@ -40,7 +40,7 @@ if ($null -eq $dpEnvironment) {
     exit 1
 }
 
-Write-Host "开始构建小融 1.1.0..."
+Write-Host "开始构建小融 1.2.0..."
 Write-Host "项目目录：$projectRoot"
 Write-Host "Conda 环境：$dpEnvironment"
 
@@ -50,13 +50,13 @@ Write-Host "Conda 环境：$dpEnvironment"
 $buildExitCode = $LASTEXITCODE
 
 if ($buildExitCode -ne 0) {
-    Write-Error "小融 1.1.0 发布构建失败，退出码：$buildExitCode"
+    Write-Error "小融 1.2.0 发布构建失败，退出码：$buildExitCode"
     exit $buildExitCode
 }
 
 $releaseExecutable = Join-Path `
     $projectRoot `
-    "release\小融-1.1.0-win64.exe"
+    "release\小融-1.2.0-win64.exe"
 
 if (-not (Test-Path -LiteralPath $releaseExecutable -PathType Leaf)) {
     Write-Error "构建流程未生成预期发布文件：$releaseExecutable"
@@ -64,5 +64,5 @@ if (-not (Test-Path -LiteralPath $releaseExecutable -PathType Leaf)) {
 }
 
 Write-Host ""
-Write-Host "小融 1.1.0 发布构建完成。"
+Write-Host "小融 1.2.0 发布构建完成。"
 Write-Host "发布文件：$releaseExecutable"

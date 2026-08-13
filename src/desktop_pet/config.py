@@ -24,14 +24,16 @@ class DialogueBubbleConfig:
     """Internal logical-pixel limits for the click dialogue bubble."""
 
     display_duration_ms: int = 4500
-    minimum_width: int = 120
-    maximum_width: int = 320
+    minimum_width: int = 180
+    maximum_width: int = 400
     screen_margin: int = 12
     pet_gap: int = 8
-    corner_radius: int = 14
-    tail_size: int = 11
-    horizontal_padding: int = 16
-    vertical_padding: int = 12
+    corner_radius: int = 18
+    tail_size: int = 14
+    horizontal_padding: int = 24
+    vertical_padding: int = 18
+    line_gap: int = 4
+    font_point_size: float = 13.0
     maximum_height: int = 360
     maximum_display_characters: int = 600
 
@@ -46,6 +48,7 @@ class DialogueBubbleConfig:
             "tail_size",
             "horizontal_padding",
             "vertical_padding",
+            "line_gap",
             "maximum_height",
             "maximum_display_characters",
         )
@@ -57,6 +60,13 @@ class DialogueBubbleConfig:
             raise ValueError("Dialogue display duration must be between 2000 and 10000 ms.")
         if self.minimum_width > self.maximum_width:
             raise ValueError("Dialogue minimum width cannot exceed its maximum width.")
+        if (
+            isinstance(self.font_point_size, bool)
+            or not isinstance(self.font_point_size, (int, float))
+            or not isfinite(self.font_point_size)
+            or not 11.0 <= self.font_point_size <= 16.0
+        ):
+            raise ValueError("Dialogue font point size must be between 11 and 16 points.")
         minimum_content_width = 2 * (self.tail_size + self.horizontal_padding) + 1
         if self.maximum_width < minimum_content_width:
             raise ValueError("Dialogue maximum width is too small for its padding and tail.")
@@ -91,6 +101,52 @@ class BlinkConfig:
             raise ValueError("Blink resume delay must be at least 1.5 seconds.")
         if self.seed is not None and (isinstance(self.seed, bool) or not isinstance(self.seed, int)):
             raise ValueError("Blink seed must be an integer or None.")
+
+
+@dataclass(frozen=True, slots=True)
+class DrowsySleepConfig:
+    """Internal timing and gentle nasal-bubble motion for autonomous sleep."""
+
+    enabled: bool = True
+    startup_minimum_seconds: float = 30.0
+    startup_maximum_seconds: float = 55.0
+    minimum_interval_seconds: float = 75.0
+    maximum_interval_seconds: float = 140.0
+    interrupted_retry_seconds: float = 30.0
+    bubble_anchor_x: float = 0.485
+    bubble_anchor_y: float = 0.418
+    bubble_rotation_degrees: float = 8.0
+    bubble_rotation_period_seconds: float = 5.8
+    bubble_scale_amplitude: float = 0.065
+    bubble_scale_period_seconds: float = 3.4
+    seed: int | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.enabled, bool):
+            raise ValueError("Drowsy sleep enabled state must be boolean.")
+        ranges = (
+            ("startup", self.startup_minimum_seconds, self.startup_maximum_seconds),
+            ("interval", self.minimum_interval_seconds, self.maximum_interval_seconds),
+        )
+        for name, minimum, maximum in ranges:
+            if not isfinite(minimum) or not isfinite(maximum) or minimum <= 0 or maximum < minimum:
+                raise ValueError(f"Drowsy sleep {name} bounds must be positive and ordered.")
+        if not isfinite(self.interrupted_retry_seconds) or self.interrupted_retry_seconds <= 0:
+            raise ValueError("Drowsy sleep interrupted retry must be positive.")
+        for name in ("bubble_anchor_x", "bubble_anchor_y"):
+            value = getattr(self, name)
+            if not isfinite(value) or not 0.0 <= value <= 1.0:
+                raise ValueError(f"{name} must be between zero and one.")
+        if not 0.0 < self.bubble_rotation_degrees <= 10.0:
+            raise ValueError("Bubble rotation must be greater than zero and at most ten degrees.")
+        if not 4.0 <= self.bubble_rotation_period_seconds <= 8.0:
+            raise ValueError("Bubble rotation period must be between four and eight seconds.")
+        if not 0.0 < self.bubble_scale_amplitude <= 0.10:
+            raise ValueError("Bubble scale amplitude must be greater than zero and at most 0.10.")
+        if not 2.5 <= self.bubble_scale_period_seconds <= 5.0:
+            raise ValueError("Bubble scale period must be between 2.5 and 5 seconds.")
+        if self.seed is not None and (isinstance(self.seed, bool) or not isinstance(self.seed, int)):
+            raise ValueError("Drowsy sleep seed must be an integer or None.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -233,6 +289,7 @@ class PetWindowConfig:
     animation: AnimationConfig = field(default_factory=AnimationConfig)
     behavior: BehaviorConfig = field(default_factory=BehaviorConfig)
     blink: BlinkConfig = field(default_factory=BlinkConfig)
+    drowsy_sleep: DrowsySleepConfig = field(default_factory=DrowsySleepConfig)
 
     def __post_init__(self) -> None:
         if isinstance(self.width, bool) or not isinstance(self.width, int) or self.width <= 0:

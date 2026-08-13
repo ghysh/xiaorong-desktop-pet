@@ -7,17 +7,23 @@ from math import pow
 from PySide6.QtCore import QElapsedTimer, QObject, QPoint, Qt, QTimer, Signal
 
 from desktop_pet.actions.arbiter import ActionArbiter, ArbitrationDecision
+from desktop_pet.actions.model import ActionPriority
 from desktop_pet.actions.player import ActionInterruption, ActionPlayer
 from desktop_pet.actions.registry import ActionRuntimeRegistry
-from desktop_pet.actions.request import ActionRequest
+from desktop_pet.actions.request import ActionRequest, ActionRequestSource
+from desktop_pet.actions.sleep import (
+    DROWSY_SLEEP_ACTION_ID,
+    DrowsySleepController,
+    SleepBubbleState,
+)
 from desktop_pet.animation.easing import ease_in_out_sine, ease_out_cubic
 from desktop_pet.animation.idle_motion import IdleMotionProfile
 from desktop_pet.animation.transform import AnimationTransform
 from desktop_pet.behavior.controller import BehaviorController
 from desktop_pet.behavior.profiles import calculate_behavior_transform
-from desktop_pet.behavior.state import PetState
+from desktop_pet.behavior.state import AUTOMATIC_STATES, PetState
 from desktop_pet.blink.controller import BlinkController
-from desktop_pet.config import AnimationConfig, BehaviorConfig, BlinkConfig
+from desktop_pet.config import AnimationConfig, BehaviorConfig, BlinkConfig, DrowsySleepConfig
 from desktop_pet.interaction.controller import InteractionController
 
 
@@ -26,6 +32,7 @@ class AnimationController(QObject):
 
     transform_changed = Signal(object)
     overlay_frame_changed = Signal(object)
+    sleep_bubble_changed = Signal(object)
 
     def __init__(
         self,
@@ -33,6 +40,7 @@ class AnimationController(QObject):
         *,
         behavior_config: BehaviorConfig | None = None,
         blink_config: BlinkConfig | None = None,
+        drowsy_sleep_config: DrowsySleepConfig | None = None,
         action_registry: ActionRuntimeRegistry | None = None,
         effective_drag_tilt_max_degrees: float | None = None,
         parent: QObject | None = None,
@@ -54,7 +62,12 @@ class AnimationController(QObject):
         self._action_arbiter = ActionArbiter()
         self._action_player = ActionPlayer(parent=self)
         self._blink_controller = BlinkController(blink_config or BlinkConfig())
+        sleep_config = drowsy_sleep_config or DrowsySleepConfig()
+        self._sleep_controller = DrowsySleepController(sleep_config)
+        self._drowsy_sleep_enabled = sleep_config.enabled
+        self._sleep_bubble_state = SleepBubbleState.hidden()
         self._action_player.frame_changed.connect(self.overlay_frame_changed)
+        self._action_player.clip_started.connect(self._on_action_started)
         self._action_player.clip_finished.connect(self._on_action_finished)
         self._action_player.clip_interrupted.connect(self._on_action_interrupted)
         self._timer = QTimer(self)
@@ -119,6 +132,15 @@ class AnimationController(QObject):
         return self._blink_controller
 
     @property
+    def sleep_controller(self) -> DrowsySleepController:
+        """Expose the timer-free autonomous sleep scheduler for tests and diagnostics."""
+        return self._sleep_controller
+
+    @property
+    def sleep_bubble_state(self) -> SleepBubbleState:
+        return self._sleep_bubble_state
+
+    @property
     def action_registry(self) -> ActionRuntimeRegistry:
         return self._action_registry
 
@@ -143,6 +165,10 @@ class AnimationController(QObject):
     def animation_enabled(self) -> bool:
         return self._animation_enabled
 
+    @property
+    def drowsy_sleep_enabled(self) -> bool:
+        return self._drowsy_sleep_enabled
+
     def start(self) -> None:
         """Start or resume the one timer and preserve behavior lifecycle semantics."""
         if self._behavior_controller.current_state is PetState.STOPPED:
@@ -156,6 +182,7 @@ class AnimationController(QObject):
         now = self.elapsed_seconds
         if not self._has_started:
             self._behavior_controller.start(now)
+            self._sleep_controller.start(now)
             self._has_started = True
         elif self._behavior_controller.current_state is PetState.PAUSED:
             self._behavior_controller.resume(now)
@@ -172,6 +199,7 @@ class AnimationController(QObject):
         now = self.elapsed_seconds
         self._timer.stop()
         self._interrupt_current_action(now, "animation_timer_stopped")
+        self._set_sleep_bubble(SleepBubbleState.hidden(), force=True)
         self._blink_controller.pause(now)
         self._dragging = False
         self._last_drag_position = None
@@ -183,6 +211,7 @@ class AnimationController(QObject):
         now = self.elapsed_seconds
         self._interaction_controller.cancel_active(now)
         self._interrupt_current_action(now, "animation_paused")
+        self._set_sleep_bubble(SleepBubbleState.hidden(), force=True)
         self._blink_controller.pause(now)
         self._behavior_controller.pause(now)
         self._timer.stop()
@@ -198,6 +227,7 @@ class AnimationController(QObject):
         self._timer.stop()
         self._interaction_controller.cancel_active(now)
         self._interrupt_current_action(now, "application_stopped")
+        self._set_sleep_bubble(SleepBubbleState.hidden(), force=True)
         self._blink_controller.stop()
         self._dragging = False
         self._returning = False
@@ -291,7 +321,51 @@ class AnimationController(QObject):
 
     def set_behavior_enabled(self, enabled: bool) -> None:
         """Forward an automatic-scheduling toggle using the shared monotonic clock."""
-        self._behavior_controller.set_behavior_enabled(enabled, self.elapsed_seconds)
+        now = self.elapsed_seconds
+        self._behavior_controller.set_behavior_enabled(enabled, now)
+        if not enabled and getattr(self._action_player.current_clip, "action_id", None) == DROWSY_SLEEP_ACTION_ID:
+            self._interrupt_current_action(now, "behavior_disabled")
+        self._sleep_controller.set_enabled(enabled and self._drowsy_sleep_enabled, now)
+        if not enabled:
+            self._set_sleep_bubble(SleepBubbleState.hidden(), force=True)
+
+    def set_drowsy_sleep_enabled(self, enabled: bool) -> None:
+        """Toggle only autonomous drowsy scheduling and interrupt an active sleep safely."""
+        if not isinstance(enabled, bool):
+            raise ValueError("Drowsy sleep enabled state must be boolean.")
+        self._drowsy_sleep_enabled = enabled
+        now = self.elapsed_seconds
+        if not enabled and getattr(self._action_player.current_clip, "action_id", None) == DROWSY_SLEEP_ACTION_ID:
+            self._interrupt_current_action(now, "drowsy_sleep_disabled")
+        effective_enabled = enabled and self._behavior_controller.behavior_enabled
+        self._sleep_controller.set_enabled(effective_enabled, now)
+        if not enabled:
+            self._set_sleep_bubble(SleepBubbleState.hidden(), force=True)
+
+    def play_drowsy_sleep_demo(self) -> bool:
+        """Submit one user-requested sleep cycle without changing autonomous settings."""
+        current_action_id = getattr(self._action_player.current_clip, "action_id", None)
+        if current_action_id == DROWSY_SLEEP_ACTION_ID:
+            return False
+        if self._action_player.pending_action_id == DROWSY_SLEEP_ACTION_ID:
+            return False
+        state = self._behavior_controller.current_state
+        if (
+            not self._animation_enabled
+            or not self._timer.isActive()
+            or (state not in AUTOMATIC_STATES and state is not PetState.STARTING)
+        ):
+            return False
+        now = self.elapsed_seconds
+        return self._process_action_request(
+            ActionRequest(
+                action_id=DROWSY_SLEEP_ACTION_ID,
+                priority=ActionPriority.AUTONOMOUS_SLEEP,
+                source=ActionRequestSource.USER,
+                requested_at_seconds=now,
+                reason="manual drowsy sleep demo",
+            )
+        )
 
     def set_click_reaction_enabled(self, enabled: bool) -> None:
         self._interaction_controller.set_enabled(enabled, self.elapsed_seconds)
@@ -329,10 +403,27 @@ class AnimationController(QObject):
             PetState.RESTING,
         }:
             self._interrupt_current_action(elapsed_seconds, "behavior_override")
-        request = self._blink_controller.update(elapsed_seconds, self._behavior_controller.current_state)
-        if request is not None:
-            self._process_action_request(request)
+        active_action_id = getattr(self._action_player.current_clip, "action_id", None)
+        sleep_request = self._sleep_controller.update(
+            elapsed_seconds,
+            self._behavior_controller.current_state,
+            active_action_id,
+        )
+        if sleep_request is not None:
+            accepted = self._process_action_request(sleep_request)
+            self._sleep_controller.resolve_request(accepted, elapsed_seconds)
+        if getattr(self._action_player.current_clip, "action_id", None) != DROWSY_SLEEP_ACTION_ID:
+            request = self._blink_controller.update(elapsed_seconds, self._behavior_controller.current_state)
+            if request is not None:
+                self._process_action_request(request)
         self._action_player.update(elapsed_seconds)
+        frame = self._action_player.current_frame
+        self._set_sleep_bubble(
+            self._sleep_controller.bubble_state(
+                elapsed_seconds,
+                None if frame is None else frame.event,
+            )
+        )
         if self._dragging:
             self._emit_profiled_transform(elapsed_seconds)
             return
@@ -395,13 +486,34 @@ class AnimationController(QObject):
     def _interrupt_current_action(self, elapsed_seconds: float, reason: str) -> None:
         self._action_player.interrupt(elapsed_seconds, reason=reason)
 
+    def _on_action_started(self, clip: object) -> None:
+        action_id = getattr(clip, "action_id", "")
+        self._sleep_controller.on_clip_started(action_id)
+        if action_id == DROWSY_SLEEP_ACTION_ID:
+            self._blink_controller.pause(self._action_player.last_elapsed_seconds)
+
     def _on_action_finished(self, clip: object) -> None:
+        action_id = getattr(clip, "action_id", "")
         if getattr(clip, "action_id", None) == BlinkController.ACTION_ID:
             self._blink_controller.on_clip_finished(self._action_player.last_elapsed_seconds)
+        self._sleep_controller.on_clip_finished(action_id, self._action_player.last_elapsed_seconds)
+        if action_id == DROWSY_SLEEP_ACTION_ID:
+            self._set_sleep_bubble(SleepBubbleState.hidden(), force=True)
 
     def _on_action_interrupted(self, interruption: ActionInterruption) -> None:
         if interruption.clip.action_id == BlinkController.ACTION_ID:
             self._blink_controller.on_clip_interrupted(self._action_player.last_elapsed_seconds)
+        self._sleep_controller.on_clip_interrupted(
+            interruption.clip.action_id,
+            self._action_player.last_elapsed_seconds,
+        )
+        if interruption.clip.action_id == DROWSY_SLEEP_ACTION_ID:
+            self._set_sleep_bubble(SleepBubbleState.hidden(), force=True)
+
+    def _set_sleep_bubble(self, state: SleepBubbleState, *, force: bool = False) -> None:
+        if force or state != self._sleep_bubble_state:
+            self._sleep_bubble_state = state
+            self.sleep_bubble_changed.emit(state)
 
 
 def _interpolate_to_identity(source: AnimationTransform, weight: float) -> AnimationTransform:
